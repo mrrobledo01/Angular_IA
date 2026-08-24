@@ -1,0 +1,8 @@
+module.exports = {
+  '/api': {
+    target: 'http://99.0.5.213:8001',
+    secure: false,
+    changeOrigin: true,
+    logLevel: 'debug',
+  },
+};
