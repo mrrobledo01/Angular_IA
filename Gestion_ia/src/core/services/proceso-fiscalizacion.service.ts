@@ -44,6 +44,7 @@ export class ProcesoFiscalizacionService {
           omisos: p.omisos,
           exactos: p.exactos,
           inexactos: p.inexactos,
+          intentos_total: p.intentos_total,
         }));
         return {
           page: paginacion.page || page,

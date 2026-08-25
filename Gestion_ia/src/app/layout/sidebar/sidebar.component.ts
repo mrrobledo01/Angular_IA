@@ -74,6 +74,12 @@ import { RouterModule } from '@angular/router';
     .nav-link i {
       font-size: 1.25rem;
     }
+
+    .nav-link span {
+      white-space: normal;
+      line-height: 1.15;
+      word-break: break-word;
+    }
   `],
 })
 export class SidebarComponent {
@@ -83,7 +89,7 @@ export class SidebarComponent {
   menuItems = [
     { icon: 'bi-speedometer2', label: 'Dashboard', route: '/dashboard' },
     { icon: 'bi-building', label: 'Entidades', route: '/entidades' },
-    { icon: 'bi-file-earmark-text', label: 'Procesos', route: '/procesos' },
+    { icon: 'bi-file-earmark-text', label: 'Proceso de análisis de contribuyente', route: '/procesos' },
     { icon: 'bi-graph-up', label: 'Análisis Individual', route: '/analisis' },
     { icon: 'bi-people', label: 'Análisis Comportamental', route: '/comportamiento' },
     { icon: 'bi-shield-check', label: 'Reglas y Hallazgos', route: '/reglas' },

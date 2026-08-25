@@ -14,9 +14,9 @@ import { ProcesoHeader } from '../../../core/models/proceso.model';
   standalone: true,
   imports: [CommonModule, RouterModule, FormsModule, PageHeaderComponent, StatusBadgeComponent, EmptyStateComponent, LoadingSpinnerComponent],
   template: `
-    <app-page-header title="Procesos de Fiscalización" [breadcrumb]="[{ label: 'Fiscalización' }, { label: 'Procesos' }]">
+    <app-page-header title="Proceso de análisis de contribuyente" [breadcrumb]="[{ label: 'Fiscalización' }, { label: 'Proceso de análisis de contribuyente' }]">
       <a routerLink="/procesos/crear" class="btn btn-primary">
-        <i class="bi bi-plus-lg me-1"></i> Nuevo Proceso
+        <i class="bi bi-plus-lg me-1"></i> Nuevo Análisis
       </a>
     </app-page-header>
 
@@ -49,20 +49,26 @@ import { ProcesoHeader } from '../../../core/models/proceso.model';
               <table class="table table-hover mb-0">
                 <thead class="bg-light">
                   <tr>
-                    <th>ID</th>
                     <th>Nombre</th>
+                    <th>Candidatos</th>
+                    <th>Omisos</th>
+                    <th>Exactos</th>
+                    <th>Inexactos</th>
+                    <th>Intentos</th>
                     <th>Estado</th>
-                    <th>NITs</th>
                     <th class="text-end">Acciones</th>
                   </tr>
                 </thead>
                 <tbody>
                   @for (p of procesos(); track p.proceso_id) {
                     <tr>
-                      <td>{{ p.proceso_id }}</td>
                       <td>{{ p.nombre }}</td>
+                      <td>{{ p.candidatos }}</td>
+                      <td>{{ p.omisos }}</td>
+                      <td>{{ p.exactos }}</td>
+                      <td>{{ p.inexactos }}</td>
+                      <td>{{ p.intentos_total }}</td>
                       <td><app-status-badge [status]="p.estado" /></td>
-                      <td>{{ p.total_nits }}</td>
                       <td class="text-end">
                         <a [routerLink]="['/procesos', p.proceso_id]" class="btn btn-sm btn-outline-primary me-1" title="Ver detalle">
                           <i class="bi bi-eye"></i>

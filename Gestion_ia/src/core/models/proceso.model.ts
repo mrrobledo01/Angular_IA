@@ -33,6 +33,7 @@ export interface ProcesoHeader {
   omisos?: number;
   exactos?: number;
   inexactos?: number;
+  intentos_total?: number;
 }
 
 export interface ListarProcesosResponse {
@@ -46,12 +47,13 @@ export interface ProcesoStatusResponse {
   estado: EstadoProceso;
   intento_actual: number;
   intentos_historial: any[];
-  progreso: {
-    total: number;
+  progreso?: {
+    total_nits: number;
     procesados: number;
     porcentaje: number;
+    faltantes: number;
   };
-  clasificacion?: any;
+  clasificacion?: Record<string, { total: number; procesados: number }>;
 }
 
 export interface ProcesoResultado {

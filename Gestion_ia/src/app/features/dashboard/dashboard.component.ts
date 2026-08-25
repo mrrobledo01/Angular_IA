@@ -18,7 +18,7 @@ import { DashboardData } from '../../../core/models/dashboard.model';
     } @else if (data()) {
       <div class="row g-4 mb-4">
         <div class="col-md-3">
-          <app-stat-card label="Total Procesos" [value]="data()!.total_procesos" icon="bi-clipboard-data" iconBackground="#0d6efd" />
+          <app-stat-card label="Total proceso de analisis" [value]="data()!.total_procesos" icon="bi-clipboard-data" iconBackground="#0d6efd" />
         </div>
         <div class="col-md-3">
           <app-stat-card label="Total Contribuyentes" [value]="formatNumber(data()!.totales.total_nits)" icon="bi-people" iconBackground="#6f42c1" />

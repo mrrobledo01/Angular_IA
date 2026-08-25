@@ -7,14 +7,14 @@ import { PageHeaderComponent } from '../../shared/components/page-header/page-he
 import { StatusBadgeComponent } from '../../shared/components/status-badge/status-badge.component';
 import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner/loading-spinner.component';
 import { ProcesoFiscalizacionService } from '../../../core/services/proceso-fiscalizacion.service';
-import { ProcesoHeader, ProcesoResultado, ProcesoError } from '../../../core/models/proceso.model';
+import { ProcesoHeader, ProcesoResultado, ProcesoError, ProcesoStatusResponse } from '../../../core/models/proceso.model';
 
 @Component({
   selector: 'app-proceso-detalle',
   standalone: true,
   imports: [CommonModule, FormsModule, PageHeaderComponent, StatusBadgeComponent, LoadingSpinnerComponent],
   template: `
-    <app-page-header [title]="proceso()?.nombre || 'Detalle de Proceso'" backRoute="/procesos" [breadcrumb]="[{ label: 'Fiscalización', route: '/procesos' }, { label: proceso()?.nombre || 'Detalle' }]">
+    <app-page-header [title]="proceso()?.nombre || 'Detalle Análisis Contribuyente'" backRoute="/procesos" [breadcrumb]="[{ label: 'Fiscalización', route: '/procesos' }, { label: proceso()?.nombre || 'Detalle Análisis Contribuyente' }]">
       <button class="btn btn-outline-primary" (click)="exportar()" [disabled]="!proceso()">
         <i class="bi bi-download me-1"></i> Exportar XLSX
       </button>
@@ -79,6 +79,44 @@ import { ProcesoHeader, ProcesoResultado, ProcesoError } from '../../../core/mod
       }
 
       @if (activeTab === 'resultados') {
+        <div class="row g-4 mb-4">
+          <div class="col-lg-4">
+            <div class="card border-0 shadow-sm h-100">
+              <div class="card-header bg-white">
+                <h6 class="mb-0 fw-bold">Clasificación</h6>
+              </div>
+              <div class="card-body d-flex align-items-center justify-content-center">
+                <div class="donut" [style.background]="donutStyle()">
+                  <div class="donut-hole">
+                    <div class="fw-bold fs-4">{{ totalNits() }}</div>
+                    <div class="text-muted small">NITs</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="col-lg-8">
+            <div class="card border-0 shadow-sm h-100">
+              <div class="card-header bg-white">
+                <h6 class="mb-0 fw-bold">Resumen por clasificación</h6>
+              </div>
+              <div class="card-body">
+                @for (c of clasificacion(); track c.categoria) {
+                  <div class="d-flex justify-content-between align-items-center mb-3">
+                    <span class="badge" [ngClass]="c.badge">{{ c.categoria }}</span>
+                    <div class="d-flex align-items-center gap-2" style="width: 65%;">
+                      <div class="progress flex-grow-1" style="height: 10px;">
+                        <div class="progress-bar" [ngClass]="c.bar" [style.width.%]="c.porcentaje"></div>
+                      </div>
+                      <span class="fw-bold" style="min-width: 40px; text-align: right;">{{ c.total }}</span>
+                    </div>
+                  </div>
+                }
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div class="mb-3">
           <select class="form-select" style="max-width: 250px;" [(ngModel)]="resultadosClasificacion" (ngModelChange)="loadResultados()">
             <option value="">Todas las clasificaciones</option>
@@ -130,6 +168,27 @@ import { ProcesoHeader, ProcesoResultado, ProcesoError } from '../../../core/mod
       }
     }
   `,
+  styles: [`
+    .donut {
+      width: 180px;
+      height: 180px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .donut-hole {
+      width: 120px;
+      height: 120px;
+      border-radius: 50%;
+      background: white;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+  `],
 })
 export class ProcesoDetalleComponent implements OnInit, OnDestroy {
   private route = inject(ActivatedRoute);
@@ -145,6 +204,9 @@ export class ProcesoDetalleComponent implements OnInit, OnDestroy {
   progresoPorcentaje = signal(0);
   progresoProcesados = signal(0);
   progresoTotal = signal(0);
+
+  totalNits = signal(0);
+  clasificacion = signal<{ categoria: string; total: number; porcentaje: number; badge: string; bar: string; color: string }[]>([]);
 
   private pollingSub?: Subscription;
   private procesoId = '';
@@ -170,7 +232,8 @@ export class ProcesoDetalleComponent implements OnInit, OnDestroy {
         });
         this.progresoPorcentaje.set(res.progreso?.porcentaje || 0);
         this.progresoProcesados.set(res.progreso?.procesados || 0);
-        this.progresoTotal.set(res.progreso?.total || 0);
+        this.progresoTotal.set(res.progreso?.total_nits || 0);
+        this.updateClasificacion(res);
         this.loading.set(false);
         this.loadResultados();
         this.loadErrores();
@@ -200,9 +263,50 @@ export class ProcesoDetalleComponent implements OnInit, OnDestroy {
         this.proceso.update((p) => p ? { ...p, estado: res.estado } : p);
         this.progresoPorcentaje.set(res.progreso?.porcentaje || 0);
         this.progresoProcesados.set(res.progreso?.procesados || 0);
-        this.progresoTotal.set(res.progreso?.total || 0);
+        this.progresoTotal.set(res.progreso?.total_nits || 0);
+        this.updateClasificacion(res);
       },
     });
+  }
+
+  private updateClasificacion(res: ProcesoStatusResponse): void {
+    const cl = res.clasificacion || {};
+    const totalNits = res.progreso?.total_nits || 0;
+    const omisos = cl['omisos']?.total || 0;
+    const inexactos = cl['inexactos']?.total || 0;
+    const exactos = Math.max(0, totalNits - omisos - inexactos);
+    const total = Math.max(totalNits, omisos + inexactos + exactos);
+
+    this.totalNits.set(total);
+
+    const defs = [
+      { categoria: 'Omisos', badge: 'bg-warning text-dark', bar: 'bg-warning', color: '#fd7e14' },
+      { categoria: 'Inexactos', badge: 'bg-danger', bar: 'bg-danger', color: '#dc3545' },
+      { categoria: 'Exactos', badge: 'bg-success', bar: 'bg-success', color: '#198754' },
+    ];
+    const valores = [omisos, inexactos, exactos];
+
+    this.clasificacion.set(
+      defs.map((d, i) => ({
+        ...d,
+        total: valores[i],
+        porcentaje: total > 0 ? (valores[i] / total) * 100 : 0,
+      }))
+    );
+  }
+
+  donutStyle(): string {
+    const items = this.clasificacion();
+    if (items.every((c) => c.total === 0)) {
+      return 'conic-gradient(#e9ecef 0% 100%)';
+    }
+    let acc = 0;
+    const stops = items.map((c) => {
+      const start = acc;
+      acc += c.porcentaje;
+      return `${c.color} ${start}% ${acc}%`;
+    });
+    return `conic-gradient(${stops.join(', ')})`;
   }
 
   exportar(): void {
