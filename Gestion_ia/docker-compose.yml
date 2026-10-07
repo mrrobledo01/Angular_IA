@@ -1,0 +1,15 @@
+name: fiscalizacion-ia
+
+services:
+  # ============================================================
+  # Frontend Angular servido por Nginx.
+  # El backend (FastAPI) es externo: Nginx proxya /api/ -> 99.0.3.8:8002
+  # ============================================================
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: fiscalizacion-web
+    ports:
+      - "${WEB_PORT:-8080}:80"
+    restart: unless-stopped
