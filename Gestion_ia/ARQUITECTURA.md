@@ -17,7 +17,7 @@ graph TB
     end
 
     subgraph "Backend FastAPI"
-        API["API REST /api/v1 (99.0.5.213:8001)"]
+        API["API REST /api/v1 (99.0.3.8:8002)"]
         IA["Modelo IA - LLM (tokens, explicaciones)"]
     end
 
@@ -63,7 +63,7 @@ graph TB
 Gestion_ia/
 ├── angular.json                    Configuración del proyecto Angular
 ├── package.json                    Dependencias y scripts
-├── proxy.conf.js                   Proxy API → http://99.0.5.213:8001
+├── proxy.conf.js                   Proxy API → http://99.0.3.8:8002
 ├── proxy.conf.json                 Proxy API (alternativo, mismo target)
 ├── tsconfig.json                   Configuración TypeScript base
 ├── tsconfig.app.json               Configuración TS para la app
@@ -307,13 +307,14 @@ sequenceDiagram
 
 | Variable | Desarrollo | Producción |
 |---|---|---|
-| `apiBaseUrl` | `/api/v1` | `/api/v1` |
-| `geoApiUrl` | `/api/v1` | `/api/v1` |
-| `chatbotApiUrl` | `/api/v1` | `/api/v1` |
+| `apiBaseUrl` | `/api/v1` | `http://99.0.3.8:8002/api/v1` |
+| `authBaseUrl` | `/api/v1/auth` | `http://99.0.3.8:8002/api/v1/auth` |
+| `geoApiUrl` | `/api/v1` | `http://99.0.3.8:8002/api/v1` |
+| `chatbotApiUrl` | `/api/v1` | `http://99.0.3.8:8002/api/v1` |
 | `useMockGeo` | `true` | `false` |
 | `useMockChatbot` | `true` | `false` |
 
-Las URLs son relativas (`/api/v1`). El proxy de desarrollo redirige `/api/*` al backend real.
+En desarrollo las URLs son relativas (`/api/v1`) y el proxy redirige `/api/*` al backend real. En producción las URLs son absolutas y apuntan a `http://99.0.3.8:8002`.
 
 ### 6.2 Proxy API (desarrollo local)
 
@@ -321,7 +322,7 @@ Las URLs son relativas (`/api/v1`). El proxy de desarrollo redirige `/api/*` al 
 // proxy.conf.js
 module.exports = {
   '/api': {
-    target: 'http://99.0.5.213:8001',
+    target: 'http://99.0.3.8:8002',
     secure: false,
     changeOrigin: true,
     logLevel: 'debug',
@@ -342,7 +343,7 @@ En `angular.json`, el serve usa `proxyConfig: "proxy.conf.js"`. Las peticiones `
 }
 ```
 
-- `ng serve` usa proxy `proxy.conf.js` (requiere backend corriendo en `99.0.5.213:8001`).
+- `ng serve` usa proxy `proxy.conf.js` (requiere backend corriendo en `99.0.3.8:8002`).
 - `ng build` genera producción en `dist/Gestion_ia/`.
 - Budget: warning 500kB, error 1MB (bundle inicial).
 
@@ -412,7 +413,7 @@ Todas las rutas son lazy-loaded con `loadComponent`. No existen guards ni protec
 ### Prerrequisitos
 - Node.js >= 18
 - npm >= 9
-- Backend FastAPI corriendo en `http://99.0.5.213:8001` (o ajustar proxy)
+- Backend FastAPI corriendo en `http://99.0.3.8:8002` (o ajustar proxy)
 
 ### Instalación
 ```bash
@@ -425,7 +426,7 @@ npm install
 npm start
 # Equivale a: ng serve --configuration development
 # Abre http://localhost:4200
-# Proxy: /api/* → http://99.0.5.213:8001
+# Proxy: /api/* → http://99.0.3.8:8002
 ```
 
 > **Nota:** El proxy requiere que el backend esté accesible. Si no está disponible, las llamadas API fallarán pero la UI seguirá funcionando (mocks para geo y chatbot).
@@ -437,7 +438,7 @@ ng build
 ```
 
 ### Variables de entorno (sin secretos)
-El archivo `proxy.conf.js` contiene la dirección del backend (`99.0.5.213:8001`). Para cambiar el backend en desarrollo, modificar este archivo. No hay tokens, API keys ni credenciales en el frontend.
+El archivo `proxy.conf.js` contiene la dirección del backend (`99.0.3.8:8002`). Para cambiar el backend en desarrollo, modificar este archivo. No hay tokens, API keys ni credenciales en el frontend.
 
 ### Testing
 ```bash

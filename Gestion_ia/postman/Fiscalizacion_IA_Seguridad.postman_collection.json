@@ -1,0 +1,584 @@
+{
+  "info": {
+    "name": "Fiscalizacion IA - Modulo de Seguridad",
+    "_postman_id": "9f3c1b7e-4a5d-4c2b-8f1a-123456789abc",
+    "description": "Pruebas de los servicios de autenticacion y RBAC (usuarios/roles/permisos/auditoria) contra http://99.0.3.8:8002/api/v1. Usa usuario de prueba: prueba / Prueba123! (rol ADMIN).\n\n1. Corre primero 'Login' (guarda el token automaticamente en la variable {{token}}).\n2. Los demas endpoints usan Authorization: Bearer {{token}}.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://99.0.3.8:8002/api/v1",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "refresh_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "usuario_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "rol_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "permiso_id",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "item": [
+    {
+      "name": "A. Autenticacion (auth)",
+      "item": [
+        {
+          "name": "1.1 Login (obtener token)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"prueba\",\n  \"password\": \"Prueba123!\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "login"]
+            },
+            "description": "Inicia sesion y obtiene JWT. Guarda access_token y refresh_token en las variables de la coleccion."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test('Login 200 OK', () => pm.response.to.have.status(200));",
+                  "pm.environment.set('token', json.access_token);",
+                  "pm.environment.set('refresh_token', json.refresh_token);",
+                  "pm.log('Token guardado:', json.access_token);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "1.2 Me (whoami)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/auth/me",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "me"]
+            },
+            "description": "Usuario autenticado + roles + permisos efectivos."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Me 200 OK', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('Trae roles', () => pm.expect(j.roles).to.be.an('array'));",
+                  "pm.test('Trae permisos', () => pm.expect(j.permisos).to.be.an('array'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "1.3 Refresh token (rotacion)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refresh_token\": \"{{refresh_token}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/refresh",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "refresh"]
+            },
+            "description": "Rota el refresh token y devuelve nuevos tokens. El refresh anterior queda invalidado."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test('Refresh 200 OK', () => pm.response.to.have.status(200));",
+                  "pm.environment.set('token', json.access_token);",
+                  "pm.environment.set('refresh_token', json.refresh_token);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "1.4 Logout (revocar sesion)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refresh_token\": \"{{refresh_token}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/logout",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "logout"]
+            },
+            "description": "Cierra sesion y revoca el refresh token."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Logout OK', () => pm.response.to.have.status(200));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "B. Usuarios (seg/usuarios)",
+      "item": [
+        {
+          "name": "2.1 Listar usuarios",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/seg/usuarios?page=1&page_size=50",
+              "host": ["{{base_url}}"],
+              "path": ["seg", "usuarios"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "page_size", "value": "50" }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Listar 200 OK', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('Tiene total', () => pm.expect(j.total).to.be.a('number'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.2 Crear usuario",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"postman_test_{{$randomInt}}\",\n  \"email\": \"postman{{$randomInt}}@infortributos.com\",\n  \"password\": \"Seguro123!\",\n  \"activo\": true\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/seg/usuarios",
+              "host": ["{{base_url}}"],
+              "path": ["seg", "usuarios"]
+            },
+            "description": "Crea un usuario. Guarda su id en {{usuario_id}}. Usa {{$randomInt}} para no chocar con duplicados."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Crear 201 OK', () => pm.response.to.have.status(201));",
+                  "const j = pm.response.json();",
+                  "pm.environment.set('usuario_id', j.id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.3 Consultar usuario (con roles)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/seg/usuarios/{{usuario_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["seg", "usuarios", "{{usuario_id}}"]
+            },
+            "description": "Detalle del usuario incluyendo sus roles."
+          }
+        },
+        {
+          "name": "2.4 Actualizar usuario (PATCH)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"activo\": true\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/seg/usuarios/{{usuario_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["seg", "usuarios", "{{usuario_id}}"]
+            },
+            "description": "Actualiza email/password/username/activo (todos opcionales)."
+          }
+        },
+        {
+          "name": "2.5 Asignar rol a usuario",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"rol\": \"AUDITOR\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/seg/usuarios/{{usuario_id}}/roles",
+              "host": ["{{base_url}}"],
+              "path": ["seg", "usuarios", "{{usuario_id}}", "roles"]
+            },
+            "description": "Asigna el rol 'AUDITOR' al usuario (el rol debe existir: ADMIN, AUDITOR, FUNCIONARIO)."
+          }
+        },
+        {
+          "name": "2.6 Remover rol de usuario",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/seg/usuarios/{{usuario_id}}/roles/AUDITOR",
+              "host": ["{{base_url}}"],
+              "path": ["seg", "usuarios", "{{usuario_id}}", "roles", "AUDITOR"]
+            },
+            "description": "Quita el rol AUDITOR del usuario."
+          }
+        },
+        {
+          "name": "2.7 Eliminar / desactivar usuario",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/seg/usuarios/{{usuario_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["seg", "usuarios", "{{usuario_id}}"]
+            },
+            "description": "Desactiva (soft delete) el usuario. Guardalo para despues o eliminalo manualmente."
+          }
+        }
+      ]
+    },
+    {
+      "name": "C. Roles (seg/roles)",
+      "item": [
+        {
+          "name": "3.1 Listar roles",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/seg/roles?page=1&page_size=50",
+              "host": ["{{base_url}}"],
+              "path": ["seg", "roles"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "page_size", "value": "50" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "3.2 Crear rol",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"CONSULTOR_{{ $randomInt }}\",\n  \"descripcion\": \"Rol de solo lectura temporal\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/seg/roles",
+              "host": ["{{base_url}}"],
+              "path": ["seg", "roles"]
+            },
+            "description": "Crea un rol. Guarda su id en {{rol_id}}."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Crear rol 201 OK', () => pm.response.to.have.status(201));",
+                  "const j = pm.response.json();",
+                  "pm.environment.set('rol_id', j.id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.3 Consultar rol (con permisos)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/seg/roles/{{rol_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["seg", "roles", "{{rol_id}}"]
+            }
+          }
+        },
+        {
+          "name": "3.4 Actualizar rol",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"descripcion\": \"Rol actualizado en prueba\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/seg/roles/{{rol_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["seg", "roles", "{{rol_id}}"]
+            }
+          }
+        },
+        {
+          "name": "3.5 Asignar permiso a rol",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"codigo\": \"DASHBOARD_VER\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/seg/roles/{{rol_id}}/permisos",
+              "host": ["{{base_url}}"],
+              "path": ["seg", "roles", "{{rol_id}}", "permisos"]
+            },
+            "description": "Asigna el permiso DASHBOARD_VER al rol."
+          }
+        },
+        {
+          "name": "3.6 Remover permiso de rol",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/seg/roles/{{rol_id}}/permisos/DASHBOARD_VER",
+              "host": ["{{base_url}}"],
+              "path": ["seg", "roles", "{{rol_id}}", "permisos", "DASHBOARD_VER"]
+            }
+          }
+        },
+        {
+          "name": "3.7 Eliminar rol",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/seg/roles/{{rol_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["seg", "roles", "{{rol_id}}"]
+            },
+            "description": "Elimina el rol creado en la prueba (debe estar sin usuarios asignados)."
+          }
+        }
+      ]
+    },
+    {
+      "name": "D. Permisos (seg/permisos)",
+      "item": [
+        {
+          "name": "4.1 Listar permisos (filtro modulo)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/seg/permisos?modulo=SEG&page=1&page_size=50",
+              "host": ["{{base_url}}"],
+              "path": ["seg", "permisos"],
+              "query": [
+                { "key": "modulo", "value": "SEG" },
+                { "key": "page", "value": "1" },
+                { "key": "page_size", "value": "50" }
+              ]
+            },
+            "description": "Lista permisos filtrados por modulo (SEG, PROCESO, DASHBOARD, HALLAZGOS)."
+          }
+        },
+        {
+          "name": "4.2 Consultar permiso",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/seg/permisos/{{permiso_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["seg", "permisos", "{{permiso_id}}"]
+            },
+            "description": "Reemplaza {{permiso_id}} por un id real del listado de permisos."
+          }
+        },
+        {
+          "name": "4.3 Crear permiso",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"codigo\": \"REPORTES_VER_{{ $randomInt }}\",\n  \"modulo\": \"REPORTES\",\n  \"descripcion\": \"Ver reportes\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/seg/permisos",
+              "host": ["{{base_url}}"],
+              "path": ["seg", "permisos"]
+            },
+            "description": "Crea un permiso. Guarda su id en {{permiso_id}}."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Crear permiso 201 OK', () => pm.response.to.have.status(201));",
+                  "const j = pm.response.json();",
+                  "pm.environment.set('permiso_id', j.id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "4.4 Actualizar permiso",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"descripcion\": \"Permiso actualizado en prueba\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/seg/permisos/{{permiso_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["seg", "permisos", "{{permiso_id}}"]
+            }
+          }
+        },
+        {
+          "name": "4.5 Eliminar permiso",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/seg/permisos/{{permiso_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["seg", "permisos", "{{permiso_id}}"]
+            },
+            "description": "Elimina el permiso creado en la prueba."
+          }
+        }
+      ]
+    },
+    {
+      "name": "E. Auditoria (seg/auditoria)",
+      "item": [
+        {
+          "name": "5.1 Listar auditoria (filtro username)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/seg/auditoria?username=prueba&page=1&page_size=50",
+              "host": ["{{base_url}}"],
+              "path": ["seg", "auditoria"],
+              "query": [
+                { "key": "username", "value": "prueba" },
+                { "key": "page", "value": "1" },
+                { "key": "page_size", "value": "50" }
+              ]
+            },
+            "description": "Eventos de auditoria (LOGIN/logout/etc) filtrados por usuario. Quita el username para ver todo."
+          }
+        }
+      ]
+    }
+  ]
+}
